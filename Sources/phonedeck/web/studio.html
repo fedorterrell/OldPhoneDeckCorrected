@@ -225,6 +225,7 @@
     <div class="sect">Settings</div>
     <div class="nav" data-pane="look"><span class="e" data-g="brush"></span>Appearance</div>
     <div class="nav" data-pane="notes"><span class="e" data-g="bell"></span>Notifications<b id="noteWarn" style="display:none">Setup</b></div>
+    <div class="nav" data-pane="plex"><span class="e" data-g="plex"></span>Plex</div>
     <div class="nav" data-pane="connect"><span class="e" data-g="wifi"></span>Connect a device</div>
   </aside>
 
@@ -710,6 +711,8 @@ function renderPane() {
     box.querySelectorAll('[data-pane]').forEach(b => b.onclick = () => api.post('/settings-pane', { pane: b.dataset.pane }));
     $('copyHook').onclick = () => { navigator.clipboard.writeText(hook).then(() => toast('Copied')); };
     $('testNote').onclick = () => api.post('/notify', { app: 'Claude', title: 'PhoneDeck test', body: 'Notifications reach your decks.' }, () => toast('Sent: watch your decks'));
+  } else if (pane === 'plex') {
+    renderPlex(box);
   } else if (pane === 'connect') {
     const host = info.host || info.lan || 'your-mac', base = `http://${host}:${info.port || 8045}`, secure = `https://${host}:${(info.port || 8045) + 2}`;
     const row = (label, url) => `<div class="linkrow"><span style="width:150px;color:var(--muted)">${label}</span><code>${PD.esc(url)}</code><button class="btn" data-copy="${PD.esc(url)}">Copy</button></div>`;
@@ -722,6 +725,43 @@ function renderPane() {
         <a href="${base}/?device=classic#k=${api.token}" target="_blank">4S</a> · <a href="${base}/?device=phone#k=${api.token}" target="_blank">iPhone</a> · <a href="${base}/?device=tablet#k=${api.token}" target="_blank">iPad</a></p></div>`;
     box.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Copied')));
   }
+}
+
+// Plex: players found on the network, the server they stream from, and whether it trusts this Mac.
+async function renderPlex(box) {
+  clearTimeout(renderPlex.t);
+  const s = await getJSON('/plex/setup');
+  if (pane !== 'plex') return;
+  if (!s) { box.innerHTML = '<h2>Plex</h2><p class="lead">Couldn’t reach PhoneDeck.</p>'; return; }
+  const players = s.players || [], srv = s.server, mac = s.mac || 'this Mac';
+  const playerRows = players.length ? players.map(p => `<div class="perm"><div class="grow"><b>${PD.esc(p.name)}</b>
+      <div style="color:var(--muted);margin-top:2px">${PD.esc(p.product)} · ${p.host === '127.0.0.1' ? 'this Mac' : PD.esc(p.host)}</div></div></div>`).join('')
+    : `<p style="color:var(--muted);margin:0">${s.scanned ? 'No Plex player found yet. Open Plexamp on this Mac, or on a device on your network (in Plexamp: Settings › Playback › <b>Advertise as player</b>).' : 'Looking for players…'}</p>`;
+  const trustCard = !srv ? `<div class="card"><h3>Server</h3><p style="color:var(--muted);margin:0">Play something in Plexamp once: PhoneDeck learns your server from it.</p></div>`
+    : srv.trusted ? `<div class="card"><h3>Server</h3><div class="perm"><div class="grow"><b>${PD.esc(srv.name)}</b><div style="color:var(--muted);margin-top:2px">${PD.esc(srv.url)}</div></div><span class="s ok">Trusts this Mac</span></div>
+        <p style="color:var(--muted);margin:8px 0 0">Song details, artwork, browse, search and Up Next are on.</p></div>`
+    : `<div class="card"><h3>Let your Plex server trust this Mac</h3>
+        <div class="perm"><div class="grow"><b>${PD.esc(srv.name)}</b><div style="color:var(--muted);margin-top:2px">${PD.esc(srv.url)}</div></div><span class="s no">Doesn’t trust this Mac</span></div>
+        <p style="color:var(--muted);margin:8px 0">Without it the deck shows play state and controls, but not the song, artwork or library. PhoneDeck never signs in to your Plex account; instead:</p>
+        <ol style="margin:0 0 10px 18px;padding:0;line-height:1.6;color:var(--muted)">
+          <li>Open Plex (app.plex.tv or the Plex app) → <b>Settings</b> → your server → <b>Network</b> → <b>Show Advanced</b>.</li>
+          <li>In <b>List of IP addresses and networks that are allowed without auth</b>, add <code>${PD.esc(mac)}</code> (separate entries with commas), then <b>Save Changes</b>.</li>
+          <li>Click <b>Check again</b>.</li></ol>
+        <p style="color:var(--muted);margin:0 0 10px">Anyone using this Mac’s address can then use your server without signing in. If your router gives the Mac a different address later, update the entry (or reserve the address in the router).</p>
+        <button class="btn" id="pxCheck">Check again</button> <button class="btn" data-copy="${PD.esc(mac)}">Copy ${PD.esc(mac)}</button></div>`;
+  box.innerHTML = `<h2>Plex</h2><p class="lead">Control Plexamp on this Mac or on your network from every deck. No Plex sign-in needed.</p>
+    <div class="card"><h3>Players</h3>${playerRows}
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><span style="color:var(--muted)">The deck controls</span>
+        <select class="btn" id="pxPlayer"><option value="">Whatever is playing</option>${players.map(p => `<option value="${PD.esc(p.id)}" ${p.id === s.playerID ? 'selected' : ''}>${PD.esc(p.name)}</option>`).join('')}</select>
+        <button class="btn" id="pxScan">Search again</button></div></div>
+    ${trustCard}
+    <div class="card"><h3>On the decks</h3><p style="color:var(--muted);margin:0">Add the <b>Plex</b> widget from the widget gallery. Large and Tall add shuffle, repeat, rating, the player picker and the library (browse, search, Up Next). The Now Playing widget also shows Plex when Spotify and Music aren’t open.</p></div>`;
+  const post = (params, then) => api.post('/plex/setup', params, () => (then ? then() : renderPlex(box)));
+  $('pxPlayer').onchange = e => post({ action: 'choose', player: e.target.value }, () => toast('Saved'));
+  $('pxScan').onclick = () => { toast('Searching…'); post({ action: 'rescan' }, () => setTimeout(() => renderPlex(box), 2500)); };
+  if ($('pxCheck')) $('pxCheck').onclick = () => post({ action: 'rescan' });
+  box.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Copied')));
+  if (!s.scanned || (srv && !srv.trusted)) renderPlex.t = setTimeout(() => renderPlex(box), 5000);   // follows changes by itself
 }
 
 // ---------- render ----------

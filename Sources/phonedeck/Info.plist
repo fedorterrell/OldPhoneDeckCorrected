@@ -6,6 +6,7 @@
 	<key>CFBundleIdentifier</key><string>com.phonedeck.server</string>
 	<key>CFBundleName</key><string>phonedeck</string>
 	<key>NSCalendarsFullAccessUsageDescription</key><string>Shows your upcoming events on the PhoneDeck dashboard.</string>
+	<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>NSAppleEventsUsageDescription</key><string>Reads now playing and toggles dark mode for the PhoneDeck dashboard.</string>
 </dict>
 </plist>

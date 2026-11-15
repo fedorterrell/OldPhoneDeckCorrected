@@ -11,6 +11,10 @@ final class Music {
     private var artID = ""
     private var art: Data?
     private var timer: DispatchSourceTimer?
+    /// Another source shown when neither Spotify nor Music is open (Plex): same keys as `current`, plus "thumb".
+    var fallback: (() -> [String: Any]?)?
+    var fallbackArt: ((String) -> Data?)?
+    var fallbackControl: ((String) -> Void)?
 
     func start() {
         let t = DispatchSource.makeTimerSource(queue: queue)
@@ -48,7 +52,15 @@ final class Music {
             .compactMap { Music.osascript($0.script)?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .map { $0.components(separatedBy: "\t") }
             .filter { $0.count >= 9 }
-        guard let f = found.first(where: { $0[1] == "playing" }) ?? found.first else { set { current = [:] }; return }
+        guard let f = found.first(where: { $0[1] == "playing" }) ?? found.first else {
+            guard var other = fallback?(), let id = other["id"] as? String else { set { current = [:] }; return }
+            let thumb = other.removeValue(forKey: "thumb") as? String ?? ""
+            let newTrack = id != artID
+            if newTrack { artID = id; set { art = nil } }
+            set { other["hasArt"] = art != nil; current = other }
+            if newTrack, !thumb.isEmpty, let data = fallbackArt?(thumb), artID == id { set { art = data; current["hasArt"] = true } }
+            return
+        }
         let num = { (s: String) in Double(s.replacingOccurrences(of: ",", with: ".")) ?? 0 }
         let id = f[8]
         var info: [String: Any] = ["app": f[0], "playing": f[1] == "playing", "title": f[2], "artist": f[3], "album": f[4],
@@ -96,6 +108,7 @@ final class Music {
                 DispatchQueue.main.async { MediaKey.press(cmd) }
                 return
             }
+            if app == "Plex", let other = self.fallbackControl { other(cmd); self.refresh(); return }
             _ = Music.osascript("tell application \"\(app)\" to \(verb)")
             Thread.sleep(forTimeInterval: 0.25)   // let the player switch tracks before re-reading
             self.refresh()
@@ -103,7 +116,10 @@ final class Music {
     }
 
     func openPlayer() {
-        let app = (snapshot()["app"] as? String) ?? "Music"
+        var app = (snapshot()["app"] as? String) ?? "Music"
+        if app == "Plex" {   // Plexamp if it's installed, otherwise Plex
+            app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "tv.plex.plexamp") != nil ? "Plexamp" : "Plex"
+        }
         _ = Music.osascript("tell application \"\(app)\" to activate")
     }
 

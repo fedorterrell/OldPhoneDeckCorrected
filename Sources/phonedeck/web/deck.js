@@ -116,6 +116,7 @@
     ink:           { label: 'Notes', g: 'note', tint: '#FFCC00', sizes: 'wmtl', desc: 'Write with Apple Pencil; it becomes a note in Apple Notes (handwriting read on the Mac).' },
     claude:        { label: 'Claude', g: 'claude', tint: '#D97757', sizes: 'wmtl', desc: 'Ask a question, take a note, or open a project in Claude Code.' },
     youtube:       { label: 'YouTube', g: 'youtube', tint: '#FF0033', sizes: 'swml', desc: 'Mirrors the video playing in Chrome or Safari; play, seek, volume and tabs.' },
+    plex:          { label: 'Plex', g: 'plex', tint: '#E5A00D', sizes: 'swmtl', desc: 'Plexamp (and Plex players) on this Mac or your network: now playing, shuffle, repeat, browse and search.' },
     camera:        { label: 'Camera & Mic', g: 'camera', tint: '#8E8E93', sizes: 'ml', modern: true, desc: 'Use this phone as the Mac’s webcam and mic.' }
   };
 
@@ -177,6 +178,11 @@
     timer: '<circle cx="12" cy="13" r="7"/><path d="M12 13V9.5M10 3.5h4M18 6.5l1.2-1.2"/>',
     sliders: '<path d="M5 8h9M18 8h1M5 16h1M10 16h9"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/>',
     youtube: '<rect x="3" y="5.5" width="18" height="13" rx="3.5"/><path d="M10.5 9.5v5l4.2-2.5z" fill="currentColor"/>',
+    plex: '<path d="M8 4h4.5l5 8-5 8H8l5-8z" stroke-linejoin="round"/>',
+    plexlib: '<path d="M4 6h16M4 12h10M4 18h7"/><path d="M17 15.5v-4l4 2z" fill="currentColor"/>',
+    shuffle: '<path d="M3.5 7h3.5c4 0 6 10 10 10h3.5M3.5 17h3.5c1.6 0 2.8-1.6 3.9-3.6M13.1 9.6C14.2 8.6 15.4 7 17 7h3.5"/><path d="M18 4.5l2.5 2.5L18 9.5M18 14.5l2.5 2.5-2.5 2.5"/>',
+    repeat: '<path d="M5 11V9.5A2.5 2.5 0 0 1 7.5 7H19M19 13v1.5a2.5 2.5 0 0 1-2.5 2.5H5"/><path d="M16.5 4.5L19 7l-2.5 2.5M7.5 14.5L5 17l2.5 2.5"/>',
+    repeat1: '<path d="M5 11V9.5A2.5 2.5 0 0 1 7.5 7H19M19 13v1.5a2.5 2.5 0 0 1-2.5 2.5H5"/><path d="M16.5 4.5L19 7l-2.5 2.5M7.5 14.5L5 17l2.5 2.5"/><path d="M11.5 10.5l1-.5v4" stroke-width="1.6"/>',
     waveform: '<path d="M4 11v2M7 8.5v7M10 5.5v13M13 8v8M16 10v4M19 11v2"/>',
     bluetooth: '<path d="M7.5 7.5l9 9-4.5 4V3.5l4.5 4-9 9"/>',
     clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
@@ -947,6 +953,113 @@
       api.json('/youtube', s === 'm' || s === 'l' ? 'frame=1' : '', function (j) { if (j) { st = j; at = Date.now(); paint(); } });
     }
     paint();
+    return { update: fetch, tick: tick };
+  };
+
+  // Plex: now playing from any Plex app streaming from your server, controls, and (Large/Tall, or the
+  // library sheet) browse, search, Up Next and the player picker. The Mac keeps the Plex token; art comes via /plex/art.
+  function plexArt(thumb, size) { return thumb ? api.url('/plex/art', 'thumb=' + encodeURIComponent(thumb) + '&size=' + size) : ''; }
+  function plexCmd(cmd, params, done) {
+    params = params || {}; params.cmd = cmd;
+    api.post('/plex', params, function (s, t) {
+      var j = {}; try { j = JSON.parse(t); } catch (x) {}
+      if (s !== 200) deckToast('Could not reach the Mac');
+      else if (j.route === 'unsupported') deckToast(j.error || 'This player can’t be controlled remotely');
+      else if (j.ok === false) deckToast(j.error || 'Plex didn’t accept that');
+      if (done) done(j);
+    });
+  }
+  W.plex = function (e, s, ctx) {
+    e.className += ' w-music';   // shares Now Playing's look
+    var btn = function (cls, g) { return '<div class="mb press ' + cls + '">' + icon(G[g]) + '</div>'; };
+    var ctl = '<div class="row btns">' + btn('prev', 'prev') + btn('play', 'play') + btn('next', 'next') + '</div>';
+    var extras = '<div class="row pxx">' + btn('pxs shuf', 'shuffle') + btn('pxs rep', 'repeat') + btn('pxs star', 'star') +
+      '<span class="pxplayer press ell"></span><span class="pxlib press">' + icon(G.plexlib) + '</span></div>';
+    var meta = '<div class="meta"><div class="ti ell"></div><div class="ar ell"></div></div>';
+    var times = '<div class="row muted num pxt"><span class="pos grow">0:00</span><span class="dur">0:00</span></div>';
+    var inline = s === 't' || (s === 'l' && ctx.w > 560);
+    var art = '<div class="art">' + icon(G.plex) + '</div>';
+    e.innerHTML = '<div class="mbg"></div><div class="min ' + (s === 'l' ? 'row' : 'col') + '">' + (
+      s === 's' ? '<div class="row grow">' + art + '<div class="meta grow"><div class="ti ell"></div><div class="ar ell"></div></div>' + btn('play', 'play') + '</div>'
+      : s === 'w' ? '<div class="row grow">' + art + '<div class="meta grow"><div class="ti ell"></div><div class="ar ell"></div><div class="prog"><i></i></div></div><div style="width:.8em"></div>' + ctl.replace('row btns', 'row') + '</div>'
+      : s === 'm' ? '<div class="row">' + art + '<div class="meta grow"><div class="ti ell"></div><div class="ar ell"></div></div></div><div class="grow"></div><div class="prog pxseek"><i></i></div><div class="grow"></div>' + ctl
+      : s === 't' ? '<div class="row">' + art + '<div class="col grow" style="min-width:0">' + meta + '</div></div><div class="prog pxseek"><i></i></div>' + times + ctl + extras + '<div class="pxpane grow"></div>'
+      : art + '<div class="col grow" style="height:100%;min-width:0">' + meta + '<div class="grow"></div><div class="prog pxseek"><i></i></div>' + times + '<div class="grow"></div>' + ctl + extras + '</div>' +
+        (inline ? '<div class="pxpane" style="width:46%"></div>' : '')
+    ) + '</div>';
+    if (s === 'l') { var a = q(e, '.art'), side = Math.round(ctx.h - 2 * ctx.fs); px(a, { width: inline ? side * .8 : side, height: inline ? side * .8 : side }); }
+    if (s === 'l' || s === 't') { var ai = q(e, '.art svg'); if (ai) ai.style.width = '40%'; }
+    var st = {}, cur = null, at = 0, last = 0, artKey = null, pane = q(e, '.pxpane');
+    var info = function () { return st; };
+    // Players list the commands they accept (Plexamp: no shuffle); unknown lists allow everything.
+    function can(c) { return !cur || !cur.controllable || (',' + cur.controllable + ',').indexOf(',' + c + ',') >= 0; }
+    function refuse(what) { deckToast((cur ? cur.player : 'This player') + ' doesn’t accept ' + what + ' from PhoneDeck'); }
+    function setText() {
+      var none = !cur, msg = st.status === 'noplayer' ? (st.error || 'Open Plexamp on the Mac or your network') : 'Nothing playing on Plex';
+      q(e, '.ti').textContent = none ? (st.status === 'noplayer' ? 'Plex' : 'Nothing playing') : cur.title;
+      q(e, '.ar').textContent = none ? msg : [cur.artist, s === 's' ? '' : cur.album].filter(function (x) { return x; }).join(' · ');
+      each(e.querySelectorAll('.mb.play'), function (b) { b.innerHTML = icon(G[cur && cur.state === 'playing' ? 'pause' : 'play']); });
+      var pl = q(e, '.pxplayer'); if (pl) pl.textContent = cur ? cur.player : (st.players || []).length ? 'Pick a player' : '';
+      var sh = q(e, '.shuf'), rp = q(e, '.rep'), sr = q(e, '.star');
+      if (sh) sh.className = 'mb press pxs shuf' + (cur && cur.shuffle ? ' on' : '') + (can('shuffle') ? '' : ' na');
+      if (rp) { rp.className = 'mb press pxs rep' + (cur && cur.repeat ? ' on' : '') + (can('repeat') ? '' : ' na'); rp.innerHTML = icon(G[cur && cur.repeat === 1 ? 'repeat1' : 'repeat']); }
+      if (sr) sr.className = 'mb press pxs star' + (cur && cur.rating > 0 ? ' on' : '');
+      e.className = e.className.replace(/ pxno/g, '') + (cur && cur.route === 'unsupported' ? ' pxno' : '');
+      var key = cur && cur.thumb ? cur.thumb : '';
+      if (key !== artKey) {
+        artKey = key;
+        var bg = key ? 'url("' + plexArt(key, s === 's' || s === 'w' ? 120 : 400) + '")' : '';
+        var ar = q(e, '.art'); ar.style.backgroundImage = bg; ar.innerHTML = key ? '' : icon(G.plex);
+        if (!key) { var sv = q(ar, 'svg'); if (sv && (s === 'l' || s === 't')) sv.style.width = '40%'; }
+        q(e, '.mbg').style.backgroundImage = bg;
+      }
+      tick();
+    }
+    function tick() {
+      var d = cur ? cur.duration : 0, pos = cur ? Math.min(d, cur.position + (cur.state === 'playing' ? (Date.now() - at) / 1000 : 0)) : 0;
+      var p = q(e, '.prog i'); if (p) p.style.width = d ? pos / d * 100 + '%' : '0';
+      var a1 = q(e, '.pos'); if (a1) { a1.textContent = mmss(pos); q(e, '.dur').textContent = mmss(d); }
+    }
+    function fetch() {
+      if (ctx.edit || Date.now() - last < 1800) return;
+      last = Date.now();
+      api.json('/plex', '', function (j) {
+        if (!j) return;
+        st = j; cur = j.current || null; at = Date.now(); setText();
+        if (pane && !pane.ready) { pane.ready = true; ctx.deck.plexPane(pane, cur && cur.queue ? 'queue' : 'browse', false, info); }
+      });
+    }
+    function cmd(c, params) {
+      plexCmd(c, params, function (j) { if (cur && j.route) cur.route = j.route; last = 0; setTimeout(fetch, 300); });
+    }
+    if (ctx.edit) { q(e, '.ti').textContent = 'Plex'; q(e, '.ar').textContent = 'Now playing from any Plex app'; }
+    else {
+      each(e.querySelectorAll('.mb.play'), function (b) {
+        tap(b, function () { if (cur) { cur.state = cur.state === 'playing' ? 'paused' : 'playing'; setText(); } cmd('playpause'); });
+      });
+      var nx = q(e, '.mb.next'), pv = q(e, '.mb.prev');
+      if (nx) tap(nx, function () { cmd('next'); });
+      if (pv) tap(pv, function () { cmd('previous'); });
+      var sh = q(e, '.shuf'), rp = q(e, '.rep'), sr = q(e, '.star');
+      if (sh) tap(sh, function () { if (!can('shuffle')) return refuse('shuffle'); cmd('shuffle', { value: cur && cur.shuffle ? 0 : 1 }); });
+      if (rp) tap(rp, function () { if (!can('repeat')) return refuse('repeat'); cmd('repeat', { value: cur ? (cur.repeat + 1) % 3 : 1 }); });
+      if (sr) tap(sr, function () { if (cur) { cur.rating = cur.rating > 0 ? 0 : 10; setText(); cmd('rate', { value: cur.rating, key: cur.ratingKey }); } });
+      each(e.querySelectorAll('.pxseek'), function (bar) {
+        tap(bar, function (ev) {
+          if (!cur || !cur.duration) return;
+          if (!can('seekTo')) return refuse('seeking');
+          var r = bar.getBoundingClientRect(), x = ev.changedTouches ? ev.changedTouches[0].clientX : ev.clientX;
+          var v = Math.max(0, Math.min(1, (x - r.left) / r.width));
+          cur.position = v * cur.duration; at = Date.now(); tick();
+          cmd('seek', { value: Math.round(cur.position) });
+        });
+      });
+      var pl = q(e, '.pxplayer'), lib = q(e, '.pxlib');
+      if (pl) tap(pl, function () { ctx.deck.plexOpen('players', info); });
+      if (lib) tap(lib, function () { if (pane) ctx.deck.plexPane(pane, 'browse', false, info); else ctx.deck.plexOpen('browse', info); });
+      tap(q(e, '.meta'), function () { if (!pane) ctx.deck.plexOpen(cur && cur.queue ? 'queue' : 'browse', info); });
+    }
+    fetch();
     return { update: fetch, tick: tick };
   };
 
@@ -1775,6 +1888,108 @@
     });
     load();
     box.timer = setInterval(load, 4000);
+  };
+
+  // ----- Plex library: browse, search, Up Next and players (sheet on small widgets, inline on Large/Tall)
+  Deck.prototype.plexOpen = function (tab, info) {
+    var self = this; this.plexClose();
+    var scrim = el('div', 'ctx-scrim'), sh = el('div', 'wa-sheet pxsheet');
+    this.root.appendChild(scrim); this.root.appendChild(sh);
+    this.pxEl = sh; this.pxScrim = scrim;
+    onTap(scrim, function () { self.plexClose(); });
+    this.plexPane(sh, tab, true, info);
+  };
+  Deck.prototype.plexClose = function () {
+    if (this.pxEl) { clearInterval(this.pxEl.timer); this.root.removeChild(this.pxEl); this.root.removeChild(this.pxScrim); }
+    this.pxEl = this.pxScrim = null;
+  };
+  Deck.prototype.plexPane = function (box, tab, sheet, info) {
+    var self = this, R = root.SpeechRecognition || root.webkitSpeechRecognition, canTalk = !!(R && root.isSecureContext);
+    var TABS = [['browse', 'Library'], ['search', 'Search'], ['queue', 'Up Next'], ['players', 'Players']];
+    clearInterval(box.timer);
+    box.innerHTML = '<div class="row wa-top pxtabs">' + (sheet ? '<span class="wa-x press">' + icon('<path d="M15 5l-7 7 7 7"/>') + '</span>' : '') +
+      TABS.map(function (t) { return '<span class="pxtab press' + (t[0] === tab ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</span>'; }).join('') + '</div>' +
+      (tab === 'search' ? '<div class="row pxsearch"><input class="wa-in" placeholder="Artists, albums, tracks" autocorrect="off" autocapitalize="off">' +
+        (canTalk ? '<span class="wa-mic press">' + icon(G.mic) + '</span>' : '') + '</div>' : '') +
+      '<div class="row pxnav" style="display:none"><span class="pxback press">' + icon('<path d="M15 5l-7 7 7 7"/>') + '</span><span class="pxtitle grow ell"></span></div>' +
+      '<div class="pxlist"><div class="empty">Loading…</div></div>';
+    each(['touchstart', 'touchmove', 'touchend'], function (t) { box.addEventListener(t, function (ev) { ev.stopPropagation(); }); });
+    if (sheet) onTap(q(box, '.wa-x'), function () { self.plexClose(); });
+    each(box.querySelectorAll('.pxtab'), function (t) { onTap(t, function () { self.plexPane(box, t.getAttribute('data-tab'), sheet, info); }); });
+    var list = q(box, '.pxlist'), nav = q(box, '.pxnav'), items = [], stack = [], seq = 0;
+    function row(it, i) {
+      if (it.kind === 'header') return '<div class="pxh">' + esc(it.title) + '</div>';
+      var th = it.thumb ? '<span class="pxth" style="background-image:url(&quot;' + esc(plexArt(it.thumb, 96)) + '&quot;)"></span>' : '<span class="pxth">' + icon(G[it.type === 'player' ? 'headphones' : 'music']) + '</span>';
+      var acts = (it.play ? (it.kind === 'dir' && it.type !== 'station' ? '<span class="pxact press" data-sh="1">' + icon(G.shuffle) + '</span>' : '') + '<span class="pxact press" data-sh="0">' + icon(G.play) + '</span>' : '') +
+        (it.on ? '<span class="pxact on">' + icon(G.check) + '</span>' : '');
+      return '<div class="pxr row' + (it.on ? ' on' : '') + '" data-i="' + i + '">' + th + '<div class="grow" style="min-width:0"><div class="pxrt ell">' + esc(it.title) + '</div>' +
+        (it.subtitle ? '<div class="pxrs ell">' + esc(it.subtitle) + '</div>' : '') + '</div>' + acts + '</div>';
+    }
+    function show(list2, empty) {
+      items = list2 || [];
+      list.innerHTML = items.length ? items.map(row).join('') : '<div class="empty">' + esc(empty || 'Nothing here') + '</div>';
+      list.scrollTop = 0;
+    }
+    function failed(j) {
+      return !j ? 'Could not reach the Mac' : j.status === 'untrusted' ? 'Your Plex server doesn’t trust this Mac yet: see Command Center › Plex on the Mac'
+        : j.status === 'noserver' ? 'Play something once in Plexamp so PhoneDeck finds your server' : j.status === 'offline' ? 'Can’t reach your Plex server' : '';
+    }
+    function browse(key, title) {
+      var n = ++seq;
+      nav.style.display = stack.length ? '' : 'none';
+      q(nav, '.pxtitle').textContent = title || '';
+      api.json('/plex/browse', key ? 'key=' + encodeURIComponent(key) : '', function (j) { if (n === seq) show(j && j.items, failed(j) || 'Empty'); });
+    }
+    function start(it, shuffle) {
+      plexCmd('start', { key: it.play, value: shuffle ? 1 : 0 }, function (j) {
+        if (j.ok) { deckToast((shuffle ? 'Shuffling ' : 'Playing ') + it.title); if (sheet) self.plexClose(); }
+      });
+    }
+    list.addEventListener('click', function (ev) {
+      var r = closest(ev.target, 'data-i', list); if (!r) return;
+      var it = items[+r.getAttribute('data-i')], act = closest(ev.target, 'data-sh', r);
+      if (!it) return;
+      if (act) return start(it, act.getAttribute('data-sh') === '1');
+      if (tab === 'players') { plexCmd('player', { key: it.id }, function () { deckToast(it.id ? 'Controlling ' + it.title : 'Following whatever plays'); self.plexPane(box, 'players', sheet, info); }); return; }
+      if (tab === 'queue') { if (it.queueItem) plexCmd('skipTo', { key: it.queueItem }); return; }
+      if (it.kind === 'dir' && it.key) { stack.push([it.key, it.title]); browse(it.key, it.title); }
+      else if (it.play) start(it, false);
+    });
+    onTap(q(nav, '.pxback'), function () { stack.pop(); var top = stack[stack.length - 1]; browse(top ? top[0] : '', top ? top[1] : ''); });
+    if (tab === 'browse') browse('', '');
+    else if (tab === 'search') {
+      var input = q(box, '.wa-in'), timer = null;
+      show([], 'Search your Plex libraries');
+      var run = function () {
+        var text = input.value.replace(/^\s+|\s+$/g, ''), n = ++seq;
+        if (!text) return show([], 'Search your Plex libraries');
+        api.json('/plex/search', 'q=' + encodeURIComponent(text), function (j) { if (n === seq) show(j && j.items, failed(j) || 'No results for “' + text + '”'); });
+      };
+      input.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 450); });
+      input.addEventListener('keydown', function (ev) { if (ev.keyCode === 13) { ev.preventDefault(); input.blur(); clearTimeout(timer); run(); } });
+      var mic = q(box, '.wa-mic');
+      if (mic) onTap(mic, function () {
+        var rec = new R(); rec.lang = navigator.language || 'en-US'; rec.interimResults = true;
+        mic.className = 'wa-mic press live';
+        rec.onresult = function (ev) { var t = ''; for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript; input.value = t; };
+        rec.onend = function () { mic.className = 'wa-mic press'; run(); };
+        rec.onerror = function () { mic.className = 'wa-mic press'; deckToast('Could not hear you'); };
+        rec.start();
+      });
+      if (sheet) input.focus();
+    } else if (tab === 'queue') {
+      var loadQueue = function () {
+        var cur = (info() || {}).current;
+        if (!cur || !cur.queue) return show([], cur ? cur.player + ' isn’t sharing a play queue' : 'Nothing playing on Plex');
+        api.json('/plex/queue', 'id=' + encodeURIComponent(cur.queue), function (j) { if (tab === 'queue') show(j && j.items, failed(j) || 'Nothing up next'); });
+      };
+      loadQueue(); box.timer = setInterval(loadQueue, 6000);
+    } else {
+      var st = info() || {}, seen = {}, ps = [{ id: '', title: 'Automatic', subtitle: 'Whatever is playing', type: 'player', on: !st.playerID }];
+      each(st.sessions || [], function (x) { if (!seen[x.playerID]) { seen[x.playerID] = 1; ps.push({ id: x.playerID, title: x.player, subtitle: (x.product || 'Plex') + ' · ' + x.state + (x.user ? ' · ' + x.user : ''), type: 'player', on: st.playerID === x.playerID }); } });
+      each(st.players || [], function (x) { if (!seen[x.id]) { seen[x.id] = 1; ps.push({ id: x.id, title: x.name, subtitle: (x.product || 'Plex') + (x.host === '127.0.0.1' ? ' · this Mac' : ' · ' + x.host), type: 'player', on: st.playerID === x.id }); } });
+      show(ps, 'No Plex players found');
+    }
   };
 
   Deck.prototype.pickProject = function () {

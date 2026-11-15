@@ -154,6 +154,11 @@ let notifications = Notifications()
 notifications.start()
 let youtube = YouTube()
 let whatsapp = WhatsApp()
+let plex = Plex()
+plex.start()
+music.fallback = { plex.active ? plex.nowPlaying() : nil }   // Now Playing shows Plex when Spotify and Music aren't open
+music.fallbackArt = { plex.artwork($0, size: 300) }
+music.fallbackControl = { _ = plex.control($0, value: nil, key: nil) }
 var clients: [String: [String: Any]] = [:]   // deck kind → last seen, page; touched only on server.queue
 
 // MARK: Routes
@@ -324,6 +329,58 @@ let routes: (HTTPRequest, HTTPConnection) -> Void = { req, conn in
             if cmd == "select" { youtube.select(p["key"] ?? ""); server.queue.async { conn.respondJSON(["ok": true]) }; return }
             let ok = youtube.control(cmd, value: value)
             server.queue.async { conn.respondJSON(["ok": ok]) }
+        }
+    // Plex: players on the network and the server they stream from; decks get JSON and resized artwork only.
+    case ("GET", "/plex"):
+        DispatchQueue.global().async {
+            let snap = plex.snapshot()
+            server.queue.async { conn.respondJSON(snap) }
+        }
+    case ("POST", "/plex"):
+        let cmd = p["cmd"] ?? "", value = Double(p["value"] ?? ""), key = p["key"]
+        DispatchQueue.global().async {
+            let r = plex.control(cmd, value: value, key: key)
+            server.queue.async { conn.respondJSON(r) }
+        }
+    case ("GET", "/plex/art"):
+        let thumb = p["thumb"] ?? "", size = Int(p["size"] ?? "") ?? 300
+        DispatchQueue.global().async {
+            let data = plex.artwork(thumb, size: size)
+            server.queue.async { data.map { conn.respond(200, "image/jpeg", $0) } ?? conn.respond(404, text: "no artwork") }
+        }
+    case ("GET", "/plex/browse"):
+        let key = p["key"]
+        DispatchQueue.global().async {
+            let r = plex.browse(key)
+            server.queue.async { conn.respondJSON(r) }
+        }
+    case ("GET", "/plex/search"):
+        let text = p["q"] ?? ""
+        DispatchQueue.global().async {
+            let r = plex.search(text)
+            server.queue.async { conn.respondJSON(r) }
+        }
+    case ("GET", "/plex/queue"):
+        let id = p["id"] ?? ""
+        DispatchQueue.global().async {
+            let r = plex.upNext(id)
+            server.queue.async { conn.respondJSON(r) }
+        }
+    case ("GET", "/plex/setup"):
+        DispatchQueue.global().async {
+            let r = plex.setupStatus()
+            server.queue.async { conn.respondJSON(r) }
+        }
+    case ("POST", "/plex/setup"):
+        let action = p["action"] ?? ""
+        DispatchQueue.global().async {
+            var r: [String: Any] = ["ok": true]
+            switch action {
+            case "rescan": plex.recheck(); plex.rescan()
+            case "choose": plex.choose(player: p["player"])
+            default: r = ["ok": false, "error": "unknown action"]
+            }
+            server.queue.async { conn.respondJSON(r) }
         }
     case ("POST", "/clientlog"):
         print("Device error [\(p["dev"] ?? "?")] \(p["msg"] ?? "") at \(p["at"] ?? "") · \(p["ua"] ?? "")")

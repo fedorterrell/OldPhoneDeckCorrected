@@ -21,12 +21,12 @@ Coming from version 1? See [Upgrading from version 1](#upgrading-from-version-1)
 
 - **Pages of keys and widgets** for three device sizes (iPhone 4S, iPhone 17-class phones, iPad mini), designed in the Command Center on the Mac. Changes reach the devices within a couple of seconds.
 - **App keys** for any Mac app, Finder included, with Dock badges (WhatsApp 3, Mail 12).
-- **Now playing:** artwork and progress for Spotify and Apple Music. Play/pause, next, previous and volume keys work with any player through the Mac's media keys.
+- **Now playing:** artwork and progress for Spotify, Apple Music and Plex. Play/pause, next, previous and volume keys work with any player through the Mac's media keys.
 - **Mac controls:** volume, brightness, dark mode, keep awake, display sleep, screenshot, mute the Mac's mic, window tiling, Focus.
 - **Monitor input switching:** HDMI 1 / HDMI 2 / DisplayPort / USB-C keys switch an external monitor's input over DDC/CI. The codes in `MacControls.monitorInputs` are an MSI MD271UL's; other monitors may need different ones.
 - **Widgets:** clock, weather (Open-Meteo, no key), calendar, Mac performance, internet speed, batteries (Mac, keyboard, mouse, AirPods), Bluetooth, notifications, notes with handwriting, focus timer.
 - **Claude:** dictate or type on the phone and it opens a new chat in the [Claude](https://claude.ai/download) desktop app; project keys open Claude Code in a folder.
-- **Integrations:** WhatsApp for Mac (recent chats, read-only, and replies), Apple Notes, YouTube in Chrome or Safari (now playing and controls), Mac notifications on every deck.
+- **Integrations:** WhatsApp for Mac (recent chats, read-only, and replies), Apple Notes, YouTube in Chrome or Safari (now playing and controls), Plex and Plexamp (see [Plex](#plex)), Mac notifications on every deck.
 - **Webcam and mic for video calls:** a modern iPhone streams from Safari; an iPhone 4S uses the small PhoneCam app. Both feed OBS (camera) and BlackHole (mic). See [WEBCAM.md](WEBCAM.md).
 - **USB cable mode for the iPhone 4S:** with no Wi-Fi, PhoneCam reaches the Mac over the cable.
 - **Second monitor (optional):** `--screen` turns the phone into a small extra display with touch control.
@@ -86,6 +86,14 @@ swift build -c release
 
 Permissions then go to your terminal app instead of PhoneDeck.
 
+## Plex
+
+The **Plex** widget follows **Plexamp** on this Mac or on your network, with no Plex account sign-in. Small to Medium sizes show the song with play/pause, next and previous. Large and Tall add a seek bar, repeat, shuffle (on players that accept it), a star rating, a player picker, and a library for browsing (playlists, recently added, stations, artists, albums), search and Up Next. Tap ▶ on a row to start it on the selected player.
+
+- **Players** are found with Plex's network discovery. Plexamp on this Mac is always found; on other devices, turn on *Settings › Playback › Advertise as player* in Plexamp. Plex video apps that advertise themselves as players show up too.
+- **What's playing and the controls** come straight from the player (Plex Companion, port 32500), with no token. Plexamp accepts play/pause, next, previous, seek, repeat and volume, but not shuffle, so the shuffle button is greyed out for it.
+- **Song details, artwork, browse, search and Up Next** come from the Plex Media Server the player streams from. It only answers once it trusts this Mac: Plex › Settings › your server › Network › Show Advanced › **List of IP addresses and networks that are allowed without auth**, add the Mac's IP address. Command Center → **Plex** shows that address and checks whether the server trusts it. Anyone using that address can then use the server without signing in.
+
 ## Upgrading from version 1
 
 - The app is now PhoneDeck.app (`./make-app.sh`); the old `oldphonedeck` command is gone.
@@ -110,6 +118,7 @@ iPhone / iPad (Safari, or PhoneCam on a 4S)     Mac: PhoneDeck.app (Swift, no de
 | Layout | Pages and widgets for every deck in `~/.phonedeck/layout.json`, edited in the Command Center (`/studio`) |
 | App keys | `NSWorkspace` lists apps, renders icons, opens them |
 | Now playing | AppleScript for Spotify and Music; the Mac's media keys for any other player |
+| Plex | `Plex.swift`: GDM discovery (UDP 32412 for players, 32414 for servers), each player's Plex Companion timeline for now playing and `/player/playback/*` for control, the server's library API for song details, browse and search |
 | Monitor input | DDC/CI VCP 0x60 over the display's I²C link, like brightness |
 | HTTPS | A private certificate authority in `~/.phonedeck/tls`; its certificate covers the Mac's `.local` name and IP |
 | USB cable | `USBTunnel.swift` keeps usbmuxd connections open to PhoneCam (port 27045 on the phone), which pipes its web view and camera through them. `PHONEDECK_USB_DEBUG=1` logs connection attempts |

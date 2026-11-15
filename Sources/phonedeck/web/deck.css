@@ -582,3 +582,45 @@
    iPad Safari reloads the page when there are too many). */
 .pd .page.far { visibility: hidden; }
 .pd.fx .page.far .tile { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* Plex (shares Now Playing's .w-music look; these add the extra controls, library rows and tabs) */
+.pd .w-plex { --tint: #E5A00D; }
+.pd .w-plex .art svg { display: block; width: 46%; height: 46%; margin: 27% auto 0; fill: none; stroke: #E5A00D; stroke-width: 2.2; stroke-linecap: round; }
+.pd .w-plex .pxseek { height: .5em; border-radius: .25em; cursor: pointer; }
+.pd .w-plex .prog i { background: #E5A00D; }
+.pd .w-plex .pxt { font-size: .7em; margin-top: .3em; }
+.pd .w-plex .pxx { margin-top: .4em; }
+.pd .w-plex.s-t .art { width: 4.4em; height: 4.4em; margin-right: .8em; border-radius: calc(var(--r) * .5); }
+.pd .w-plex.s-t .art svg { width: 46% !important; }
+.pd .w-plex.s-t .prog { margin-top: .8em; }
+.pd .mb.pxs { width: 2em; height: 2em; color: var(--label2); }
+.pd .mb.pxs svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pd .mb.pxs.on { color: #E5A00D; }
+.pd .mb.pxs.star.on svg { fill: currentColor; }
+.pd .mb.pxs.na { opacity: .3; }
+.pd .w-plex.pxno .btns .mb, .pd .w-plex.pxno .pxs { opacity: .35; }
+.pd .pxplayer { -webkit-flex: 1; flex: 1; min-width: 0; margin-left: .5em; text-align: center; padding: .25em .7em; border-radius: 99px; background: var(--platter); font-size: .7em; font-weight: 600; cursor: pointer; }
+.pd .pxlib { position: relative; width: 2em; height: 2em; margin-left: .3em; border-radius: 50%; background: var(--platter); color: var(--label); -webkit-flex: none; flex: none; cursor: pointer; }
+.pd .pxlib svg { position: absolute; left: 25%; top: 25%; width: 50%; height: 50%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.pd .pxpane { position: relative; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; min-width: 0; min-height: 0; margin-left: .8em; padding-left: .8em; border-left: .5px solid var(--sep); font-size: 13px; }
+.pd .w-plex.s-t .pxpane { margin: .6em 0 0; padding: .6em 0 0; border-left: 0; border-top: .5px solid var(--sep); }
+.pd .pxtabs { white-space: nowrap; overflow: hidden; }
+.pd .pxtab { display: inline-block; margin-right: 4px; padding: 5px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; color: var(--label2); cursor: pointer; }
+.pd .pxtab.on { background: #E5A00D; color: #000; }
+.pd .pxsearch { -webkit-flex: none; flex: none; padding-top: 8px; }
+.pd .pxnav { -webkit-flex: none; flex: none; padding-top: 6px; font-weight: 600; }
+.pd .pxback { position: relative; width: 26px; height: 26px; margin-right: 6px; border-radius: 50%; background: var(--fill); -webkit-flex: none; flex: none; cursor: pointer; }
+.pd .pxback svg { position: absolute; left: 6px; top: 6px; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pd .pxlist { -webkit-flex: 1; flex: 1; min-height: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; padding-top: 4px; }
+.pd .pxh { margin: 10px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--label2); }
+.pd .pxr { padding: 5px 0; border-bottom: .5px solid var(--sep); cursor: pointer; }
+.pd .pxr.on .pxrt { color: #E5A00D; }
+.pd .pxth { position: relative; width: 38px; height: 38px; margin-right: 9px; border-radius: 6px; background: var(--platter) center no-repeat; background-size: cover; -webkit-flex: none; flex: none; color: var(--label3); }
+.pd .pxth svg { position: absolute; left: 10px; top: 10px; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.pd .pxrt { font-size: 13.5px; font-weight: 600; }
+.pd .pxrs { font-size: 11.5px; color: var(--label2); margin-top: 1px; }
+.pd .pxact { position: relative; width: 30px; height: 30px; margin-left: 4px; border-radius: 50%; background: var(--fill); color: var(--label); -webkit-flex: none; flex: none; }
+.pd .pxact svg { position: absolute; left: 8px; top: 8px; width: 14px; height: 14px; fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pd .pxact[data-sh="1"] svg { fill: none; }
+.pd .pxact.on { background: transparent; color: #E5A00D; } .pd .pxact.on svg { fill: none; stroke-width: 2.4; }
+.pd .pxsheet .pxlist { font-size: 14px; }
